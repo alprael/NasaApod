@@ -17,6 +17,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import edu.cnm.deepdive.nasaapod.BuildConfig;
 import edu.cnm.deepdive.nasaapod.R;
+import edu.cnm.deepdive.nasaapod.controller.DateTimePickerFragment.Mode;
 import edu.cnm.deepdive.nasaapod.model.Apod;
 import edu.cnm.deepdive.nasaapod.service.ApodService;
 import java.io.IOException;
@@ -50,7 +51,13 @@ public class MainActivity extends AppCompatActivity {
     setupWebView();
     setupService();
     setupUI();
-    // TODO Setup defaults.
+    setupDefaults(savedInstanceState);
+  }
+
+  protected void onSaveIntstanceState(Bundle outState) {
+    super.onSaveInstanceState(outState);
+    outState.putLong(CALENDAR_KEY, calendar.getTimeInMillis());
+    outState.putParcelable(APOD_KEY, apod);
   }
 
   private void setupWebView() {
@@ -64,7 +71,9 @@ public class MainActivity extends AppCompatActivity {
       @Override
       public void onPageFinished(WebView view, String url) {
         progressSpinner.setVisibility(View.GONE);
-      // TODO Disiplay Toast with apod item title.
+        if (apod != null) {
+          Toast.makeText(MainActivity.this, apod.getTitle(), Toast.LENGTH_LONG).show();
+        }
       }
     });
     WebSettings settings = webView.getSettings();
@@ -80,13 +89,7 @@ public class MainActivity extends AppCompatActivity {
     progressSpinner = findViewById(R.id.progress_spinner);
     progressSpinner.setVisibility(View.GONE);
     jumpDate = findViewById(R.id.jump_date);
-    jumpDate.setOnClickListener(new OnClickListener() {
-      // TODO use lambda format.
-      @Override
-      public void onClick(View v) {
-        // TODO Display date picker.
-      }
-    });
+    jumpDate.setOnClickListener((v) -> pickDate());
   }
 
   private void setupService() {
@@ -100,6 +103,28 @@ public class MainActivity extends AppCompatActivity {
         .build();
     service = retrofit.create(ApodService.class);
     apiKey = BuildConfig.API_KEY;
+  }
+
+  private void setupDefaults(Bundle savedInstanceState) {
+    calendar = Calendar.getInstance();
+    if (savedInstanceState != null) {
+      calendar.setTimeInMillis(savedInstanceState.getLong(CALENDAR_KEY, calendar.getTimeInMillis()));
+      apod = savedInstanceState.getParcelable(APOD_KEY);
+    }
+    if (apod != null) {
+      progressSpinner.setVisibility(View.VISIBLE);
+      webView.loadUrl(apod.getUrl());
+    } else {
+      new ApodTask().execute();
+    }
+  }
+
+  private void pickDate() {
+    DateTimePickerFragment picker = new DateTimePickerFragment();
+    picker.setMode(Mode.DATE);
+    picker.setCalendar(calendar);
+    picker.setListener((cal) -> new ApodTask().execute(cal.getTime()));
+    picker.show(getSupportFragmentManager(), picker.getClass().getSimpleName());
   }
 
   private class ApodTask extends AsyncTask<Date, Void, Apod> {
@@ -120,9 +145,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCancelled(Apod apod) {
-      Context context = MainActivity.this;
       progressSpinner.setVisibility(View.GONE);
-      Toast.makeText(context, R.string.error_message, Toast.LENGTH_LONG).show();
+      Toast.makeText(MainActivity.this, R.string.error_message, Toast.LENGTH_LONG).show();
     }
 
     @Override
