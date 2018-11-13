@@ -2,5 +2,7 @@
   <string name="app_name">NasaApod</string>
   <string name="base_url">https://api.nasa.gov/</string>
   <string name="error_message">Unable to retrieve APOD for selected date.</string>
+  <string name="sign_in_error">That didn\'t work.</string>
+  <string name="sign_out">Sign out</string>
 
 </resources>
